@@ -27,6 +27,21 @@ run_dashboard.bat
 ```
 or directly: `.venv\Scripts\python.exe -m streamlit run app.py`
 
+Alternatively, activate the venv first, then use the bare `streamlit` command:
+
+```bat
+.venv\Scripts\activate
+streamlit run app.py
+```
+
+Either way, make sure it's *this* project's `.venv` in effect - if another
+project's virtual environment is already active in your shell, a bare
+`python`/`streamlit` command will silently run against that environment
+instead (missing packages like `python-dotenv`, wrong `diesel_price.db`,
+etc.). Run `.venv\Scripts\deactivate` first if unsure, or just use the
+explicit `.venv\Scripts\python.exe -m streamlit run app.py` form above,
+which always targets the right interpreter regardless of what's active.
+
 The dashboard reads only from the local SQLite database (`diesel_price.db`)
 - it never scrapes MEDCO on page load, so it keeps working (showing the last
 known price) even when MEDCO is unreachable.
