@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+.env
+
+# Live app database - real data, changes on every scrape, not a code artifact.
+diesel_price.db
+diesel_price.db-wal
+diesel_price.db-shm
