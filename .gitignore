@@ -4,7 +4,6 @@ __pycache__/
 .streamlit/secrets.toml
 .env
 
-# Live app database - real data, changes on every scrape, not a code artifact.
-diesel_price.db
+# SQLite WAL/journal sidecar files - not the db itself
 diesel_price.db-wal
 diesel_price.db-shm
