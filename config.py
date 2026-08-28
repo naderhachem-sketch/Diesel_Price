@@ -23,6 +23,14 @@ SCRAPER_USER_AGENT = os.environ.get(
 DB_PATH = Path(os.environ.get("DIESEL_DB_PATH", APP_DIR / "diesel_price.db"))
 SCHEMA_PATH = APP_DIR / "schema.sql"
 
+# Cloud deployments can't launch a real Chromium (see scraper.py's docstring
+# for why a headless browser is required at all), so on Streamlit Cloud the
+# Admin page's "Run Now" dispatches the .github/workflows/scrape.yml job
+# instead of scraping in-process. GITHUB_TOKEN is read from st.secrets, not
+# from here - see pages/1_Admin.py.
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "naderhachem-sketch/Diesel_Price")
+GITHUB_WORKFLOW_FILE = os.environ.get("GITHUB_WORKFLOW_FILE", "scrape.yml")
+
 FOCUS_FUEL_TYPE = "DIESEL"
 
 # Display metadata for every fuel type MEDCO's marquee publishes - the

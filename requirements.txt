@@ -4,3 +4,4 @@ plotly
 playwright
 python-dotenv
 openpyxl
+requests

@@ -115,8 +115,41 @@ schtasks /create /tn "MEDCO Diesel Scraper" /tr "C:\path\to\Diesel Price\run_scr
 Adjust the `/st` time to match `SCRAPER_TIME` if you change it in `.env`.
 You can verify/trigger it manually from Task Scheduler, or just run
 `run_scraper_now.bat` directly, or use the **Run Now** button on the Admin
-page - all three paths call the exact same `collector.run_once()` function,
-so behavior is identical.
+page - all three paths call the exact same `collector.run_once()` function
+in-process, so behavior is identical. (This is the local/Windows path; see
+below for how the Admin page behaves once deployed to Streamlit Cloud.)
+
+## Deploying to Streamlit Community Cloud
+
+Streamlit Cloud's containers can't launch a real Chromium, so the in-process
+Playwright scrape above only works for local runs. On Cloud, scraping instead
+runs on a schedule via `.github/workflows/scrape.yml` - a GitHub Actions job
+(on a full Ubuntu runner, where `playwright install --with-deps chromium`
+works normally) that runs `run_scraper.py` and pushes the updated
+`diesel_price.db` back to `main`. Streamlit Cloud auto-redeploys on every
+push to the connected branch, so the dashboard picks up the new price a
+minute or two after each scheduled run.
+
+To let the Admin page's **Run Now** button trigger that job on demand instead
+of trying (and failing) to launch Chromium in-process:
+
+1. Create a GitHub personal access token scoped to just this repo, with
+   Actions read/write permission (fine-grained token) or `repo` + `workflow`
+   scopes (classic token) - it only needs to call the workflow-dispatch API.
+2. In the deployed app's Streamlit Cloud settings, add it to **Secrets** as
+   `GITHUB_TOKEN = "..."`. Never commit it to `.env` or any tracked file.
+3. Redeploy/reboot the app. The Admin page detects `st.secrets["GITHUB_TOKEN"]`
+   and switches Run Now from the in-process scrape to dispatching
+   `scrape.yml`; a success message links to the Actions run. Locally, with no
+   such secret set, Run Now keeps using the fast in-process path.
+
+`GITHUB_REPO`/`GITHUB_WORKFLOW_FILE` (in `config.py`) default to
+`naderhachem-sketch/Diesel_Price` / `scrape.yml` - override via env vars if
+either ever changes.
+
+The cron schedule (`30 7 * * *` UTC, ~10:30 Asia/Beirut) doesn't shift for
+Beirut's DST changes; see the comment in `scrape.yml` for why that's fine
+(business date is keyed off the calendar day, not the exact clock time).
 
 ## Historical backfill
 
@@ -152,4 +185,5 @@ schema.sql             fuel_prices + retrieval_log tables
 .env.example           Documented, all-optional configuration
 run_dashboard.bat       Launch the dashboard
 run_scraper_now.bat     Run one scrape (Task Scheduler target)
+.github/workflows/scrape.yml   Scheduled scrape + db commit, for Streamlit Cloud
 ```

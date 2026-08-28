@@ -1,0 +1,46 @@
+name: Scrape diesel price
+
+on:
+  schedule:
+    # 07:30 UTC ~= 10:30 Asia/Beirut during DST (EEST, UTC+3, roughly
+    # late Mar-late Oct); ~09:30 local in winter (EET, UTC+2). Left as a
+    # single fixed-UTC schedule since business_date is keyed off the
+    # Asia/Beirut calendar day, not the exact clock time - a one-hour
+    # seasonal drift doesn't change which day a price is recorded under.
+    - cron: '30 7 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Run scraper
+        run: python run_scraper.py
+
+      - name: Commit and push updated database
+        if: always()
+        run: |
+          git config user.name "diesel-price-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if git diff --quiet -- diesel_price.db; then
+            echo "No changes to diesel_price.db"
+          else
+            git add diesel_price.db
+            git commit -m "Scrape: $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
