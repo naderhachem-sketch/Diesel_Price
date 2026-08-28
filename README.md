@@ -42,6 +42,14 @@ etc.). Run `.venv\Scripts\deactivate` first if unsure, or just use the
 explicit `.venv\Scripts\python.exe -m streamlit run app.py` form above,
 which always targets the right interpreter regardless of what's active.
 
+`run_dashboard.bat` runs on port 8702 (`--server.port`) to avoid clashing
+with another local Streamlit project on the default 8501 - this is a CLI
+flag, not `.streamlit/config.toml`, deliberately: Streamlit Cloud's health
+check always probes the container's `localhost:8501`, so a committed
+`server.port` override in `config.toml` breaks deployment (the app starts
+fine on the overridden port, but the health check can't find it there and
+reports the app as down). Don't reintroduce one.
+
 The dashboard reads only from the local SQLite database (`diesel_price.db`)
 - it never scrapes MEDCO on page load, so it keeps working (showing the last
 known price) even when MEDCO is unreachable.
