@@ -1,6 +1,10 @@
 """Admin / data-management page: manual Run Now trigger, retrieval log, and
-historical backfill import from CSV/Excel.
+historical backfill import from CSV/Excel. Password-gated (see
+_require_admin_password) since anyone with the app's URL can otherwise
+reach it - Streamlit's sidebar page list has no per-page access control.
 """
+import hmac
+
 import pandas as pd
 import streamlit as st
 
@@ -14,8 +18,40 @@ def _fmt_ts(iso_ts: str) -> str:
     return pd.to_datetime(iso_ts).strftime("%d-%b-%Y %H:%M")
 
 
+def _require_admin_password():
+    """Blocks the rest of the page until the correct ADMIN_PASSWORD (from
+    st.secrets) is entered. Session-scoped - a hard browser refresh clears
+    Streamlit's session state, so it asks again; that's an accepted
+    trade-off for a single-admin internal tool, not a full auth system.
+    """
+    if st.session_state.get("admin_authenticated"):
+        st.sidebar.button("Log out", on_click=lambda: st.session_state.update(admin_authenticated=False))
+        return True
+
+    try:
+        expected = st.secrets["ADMIN_PASSWORD"]
+    except (KeyError, FileNotFoundError):
+        st.error(
+            "ADMIN_PASSWORD is not set in secrets, so the Admin page is locked out. "
+            "Add it under Settings -> Secrets (Streamlit Cloud) or .streamlit/secrets.toml (local)."
+        )
+        return False
+
+    password = st.text_input("Admin password", type="password")
+    if not password:
+        return False
+    if hmac.compare_digest(password, expected):
+        st.session_state["admin_authenticated"] = True
+        st.rerun()
+    st.error("Incorrect password.")
+    return False
+
+
 st.set_page_config(page_title="Diesel Price - Admin", page_icon="🛠", layout="wide")
 st.title("Admin / Data Management")
+
+if not _require_admin_password():
+    st.stop()
 
 data_utils.init_db()
 

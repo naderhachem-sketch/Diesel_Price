@@ -161,6 +161,24 @@ The cron schedule (`30 7 * * *` UTC, ~10:30 Asia/Beirut) doesn't shift for
 Beirut's DST changes; see the comment in `scrape.yml` for why that's fine
 (business date is keyed off the calendar day, not the exact clock time).
 
+## Admin access
+
+The **Admin** page (Run Now, retrieval log, historical backfill import) is
+password-gated - Streamlit's page list has no per-page access control, so
+anything not gated is reachable by anyone with the app's URL. Set
+`ADMIN_PASSWORD` in secrets to unlock it:
+
+- Locally (optional): `.streamlit/secrets.toml` (gitignored, never commit
+  it) - `ADMIN_PASSWORD = "..."`.
+- Deployed: the app's **Settings -> Secrets** on Streamlit Cloud, alongside
+  `GITHUB_TOKEN` if you've set that up.
+
+With no `ADMIN_PASSWORD` configured, the page shows a locked-out message
+instead of any admin content. The unlocked state is per browser session
+(Streamlit session state) - a hard refresh asks again; there's no
+persistent login/cookie, which is an accepted trade-off for a single-admin
+internal tool rather than a full auth system.
+
 ## Historical backfill
 
 If you have real historical Diesel prices (e.g. from a spreadsheet), import
