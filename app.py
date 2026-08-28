@@ -11,6 +11,7 @@ import streamlit as st
 import collector
 import config
 import data_utils
+import github_dispatch
 
 st.set_page_config(page_title="MEDCO Diesel Price History", page_icon="⛽", layout="wide")
 
@@ -282,10 +283,26 @@ def main():
     render_header()
 
     if st.button("🔄 Refresh MEDCO Price"):
-        with st.spinner("Contacting MEDCO..."):
-            result = collector.run_once()
-        st.session_state["last_refresh_result"] = result
+        if github_dispatch.github_token():
+            # Streamlit Cloud can't launch a real Chromium (see scraper.py's
+            # docstring) - dispatch the GitHub Actions job instead of
+            # scraping in-process. Same as the Admin page's Run Now button.
+            with st.spinner("Triggering GitHub Actions..."):
+                ok, message = github_dispatch.trigger_github_scrape()
+            st.session_state["last_refresh_dispatch"] = (ok, message)
+        else:
+            with st.spinner("Contacting MEDCO..."):
+                result = collector.run_once()
+            st.session_state["last_refresh_result"] = result
         st.rerun()
+
+    if "last_refresh_dispatch" in st.session_state:
+        ok, message = st.session_state.pop("last_refresh_dispatch")
+        if ok:
+            st.success(f"{message} The new price will appear here in a few minutes, once the "
+                       "job finishes and the app redeploys - refresh this page again shortly.")
+        else:
+            st.error(message)
 
     if "last_refresh_result" in st.session_state:
         result = st.session_state.pop("last_refresh_result")

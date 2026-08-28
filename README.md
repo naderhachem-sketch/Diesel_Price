@@ -138,18 +138,20 @@ works normally) that runs `run_scraper.py` and pushes the updated
 push to the connected branch, so the dashboard picks up the new price a
 minute or two after each scheduled run.
 
-To let the Admin page's **Run Now** button trigger that job on demand instead
-of trying (and failing) to launch Chromium in-process:
+To let the dashboard's **🔄 Refresh MEDCO Price** button and the Admin page's
+**Run Now** button trigger that job on demand instead of trying (and
+failing) to launch Chromium in-process:
 
 1. Create a GitHub personal access token scoped to just this repo, with
    Actions read/write permission (fine-grained token) or `repo` + `workflow`
    scopes (classic token) - it only needs to call the workflow-dispatch API.
 2. In the deployed app's Streamlit Cloud settings, add it to **Secrets** as
    `GITHUB_TOKEN = "..."`. Never commit it to `.env` or any tracked file.
-3. Redeploy/reboot the app. The Admin page detects `st.secrets["GITHUB_TOKEN"]`
-   and switches Run Now from the in-process scrape to dispatching
-   `scrape.yml`; a success message links to the Actions run. Locally, with no
-   such secret set, Run Now keeps using the fast in-process path.
+3. Redeploy/reboot the app. Both buttons detect `st.secrets["GITHUB_TOKEN"]`
+   (via `github_dispatch.py`, their one shared code path for this) and
+   switch from the in-process scrape to dispatching `scrape.yml`, showing a
+   success message once triggered. Locally, with no such secret set, both
+   keep using the fast in-process `collector.run_once()` path.
 
 `GITHUB_REPO`/`GITHUB_WORKFLOW_FILE` (in `config.py`) default to
 `naderhachem-sketch/Diesel_Price` / `scrape.yml` - override via env vars if
@@ -187,6 +189,7 @@ pages/1_Admin.py      Admin / data-management page
 data_utils.py         SQLite connection, schema init, all queries
 scraper.py            Isolated MEDCO scraper (Playwright)
 collector.py           Orchestration: business date, dedupe, insert, log
+github_dispatch.py      GitHub Actions scrape.yml dispatch (Streamlit Cloud only)
 run_scraper.py         CLI one-shot entrypoint (Task Scheduler target)
 config.py              Env var loading, all tunables
 schema.sql             fuel_prices + retrieval_log tables

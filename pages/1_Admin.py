@@ -2,43 +2,16 @@
 historical backfill import from CSV/Excel.
 """
 import pandas as pd
-import requests
 import streamlit as st
 
 import collector
 import config
 import data_utils
+import github_dispatch
 
 
 def _fmt_ts(iso_ts: str) -> str:
     return pd.to_datetime(iso_ts).strftime("%d-%b-%Y %H:%M")
-
-
-def _github_token():
-    """GITHUB_TOKEN set in Streamlit Cloud's app secrets - its presence is
-    what selects GitHub Actions dispatch over the in-process scrape below,
-    since a real Chromium can't launch on Streamlit Cloud (see scraper.py).
-    Absent locally, so local dev keeps using the fast in-process path.
-    """
-    try:
-        return st.secrets["GITHUB_TOKEN"]
-    except (KeyError, FileNotFoundError):
-        return None
-
-
-def _trigger_github_scrape():
-    token = _github_token()
-    url = (f"https://api.github.com/repos/{config.GITHUB_REPO}/actions/"
-           f"workflows/{config.GITHUB_WORKFLOW_FILE}/dispatches")
-    resp = requests.post(
-        url,
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
-        json={"ref": "main"},
-        timeout=15,
-    )
-    if resp.status_code == 204:
-        return True, "Scrape job triggered on GitHub Actions."
-    return False, f"GitHub API error {resp.status_code}: {resp.text}"
 
 
 st.set_page_config(page_title="Diesel Price - Admin", page_icon="🛠", layout="wide")
@@ -47,8 +20,7 @@ st.title("Admin / Data Management")
 data_utils.init_db()
 
 st.subheader("Manual scrape")
-github_token = _github_token()
-if github_token:
+if github_dispatch.github_token():
     st.caption(
         "Running on Streamlit Cloud: this triggers the `scrape.yml` GitHub Actions job "
         "(it runs the real scraper on a Chromium-capable runner and pushes the updated "
@@ -57,7 +29,7 @@ if github_token:
     )
     if st.button("▶ Run Now"):
         with st.spinner("Triggering GitHub Actions..."):
-            ok, message = _trigger_github_scrape()
+            ok, message = github_dispatch.trigger_github_scrape()
         if ok:
             st.success(message)
             st.markdown(f"[View run status](https://github.com/{config.GITHUB_REPO}/actions)")
