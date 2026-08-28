@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .streamlit/secrets.toml
 .env
+CREDENTIALS.md
 
 # SQLite WAL/journal sidecar files - not the db itself
 diesel_price.db-wal
