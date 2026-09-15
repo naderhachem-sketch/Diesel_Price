@@ -1,9 +1,9 @@
 """Orchestration layer implementing the daily collection flow (spec section 5):
-connect -> extract -> validate/normalize -> determine business date -> dedupe
--> insert -> log. Both the Task Scheduler CLI (run_scraper.py) and the
-dashboard's Refresh/Run Now buttons call collector.run_once(), so there is
-exactly one code path for scraping (spec section 3's data-collection/UI
-separation).
+connect -> extract -> validate/normalize -> determine business date ->
+insert-or-correct-or-dedupe -> log. Both the Task Scheduler CLI
+(run_scraper.py) and the dashboard's Refresh/Run Now buttons call
+collector.run_once(), so there is exactly one code path for scraping (spec
+section 3's data-collection/UI separation).
 """
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,6 +20,7 @@ class RunResult:
     status: str
     business_date: str = None
     inserted_fuel_types: list = field(default_factory=list)
+    updated_fuel_types: list = field(default_factory=list)
     duplicate_fuel_types: list = field(default_factory=list)
     error_message: str = None
 
@@ -52,7 +53,7 @@ def run_once() -> RunResult:
         return RunResult(success=False, status=result.status,
                           business_date=business_date_str, error_message=result.error_message)
 
-    inserted, duplicates = [], []
+    inserted, updated, duplicates = [], [], []
     for fuel_type, entry in result.entries.items():
         outcome = data_utils.insert_price_row(
             price_date=business_date_str,
@@ -62,11 +63,23 @@ def run_once() -> RunResult:
             unit=entry.unit,
             retrieved_at=data_utils.now_iso(),
             raw_value=entry.raw_value,
+            allow_price_correction=True,
         )
-        (inserted if outcome == "INSERTED" else duplicates).append(fuel_type)
+        if outcome == "INSERTED":
+            inserted.append(fuel_type)
+        elif outcome == "UPDATED":
+            updated.append(fuel_type)
+        else:
+            duplicates.append(fuel_type)
 
     diesel_entry = result.entries.get(config.FOCUS_FUEL_TYPE)
-    log_status = "SUCCESS" if config.FOCUS_FUEL_TYPE in inserted else "DUPLICATE"
+    # A same-day price correction is just as much a "real" retrieval as a
+    # fresh insert - it's the reason today's fuel_prices row (and therefore
+    # the dashboard) now reflects MEDCO's current price, so it must count as
+    # SUCCESS rather than DUPLICATE (see get_last_retrieval's SUCCESS/DUPLICATE
+    # filter in app.py/pages/1_Admin.py).
+    log_status = ("SUCCESS" if config.FOCUS_FUEL_TYPE in inserted or config.FOCUS_FUEL_TYPE in updated
+                  else "DUPLICATE")
     data_utils.log_retrieval(
         retrieval_date=business_date_str,
         source_url=config.MEDCO_URL,
@@ -77,5 +90,5 @@ def run_once() -> RunResult:
 
     return RunResult(
         success=True, status=log_status, business_date=business_date_str,
-        inserted_fuel_types=inserted, duplicate_fuel_types=duplicates,
+        inserted_fuel_types=inserted, updated_fuel_types=updated, duplicate_fuel_types=duplicates,
     )

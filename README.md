@@ -80,6 +80,18 @@ kept distinct from `retrieved_at` (the UTC timestamp the scrape actually
 ran) - the scheduler may run a little late on any given day, and the price
 must still be attributed to the correct calendar date.
 
+MEDCO occasionally revises the marquee intraday (e.g. a morning scrape reads
+one price, and the site shows a different one by noon). If a later scrape on
+the *same* business date reads a different price than what's already stored,
+that row is corrected in place (status `UPDATED` on the Admin/CLI run
+summary, logged as `SUCCESS` in the retrieval log) rather than being skipped
+as a duplicate - so the dashboard's Current price always matches what MEDCO
+currently publishes for today. Rows for any earlier `price_date` are still
+never overwritten - only today's row is eligible for correction, and only by
+`collector.run_once()` (the live scraper path); the Admin page's historical
+backfill importer keeps the strict skip-duplicate-never-overwrite behavior
+described below.
+
 ## Calculation logic
 
 Every formula below is computed **independently per fuel type tab** - e.g.

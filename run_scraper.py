@@ -12,7 +12,8 @@ def main() -> int:
     result = collector.run_once()
     if result.success:
         print(f"[{result.status}] business_date={result.business_date} "
-              f"inserted={result.inserted_fuel_types} duplicate={result.duplicate_fuel_types}")
+              f"inserted={result.inserted_fuel_types} updated={result.updated_fuel_types} "
+              f"duplicate={result.duplicate_fuel_types}")
         return 0
     print(f"[{result.status}] business_date={result.business_date} error={result.error_message}",
           file=sys.stderr)

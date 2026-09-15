@@ -77,7 +77,8 @@ else:
             result = collector.run_once()
         if result.success:
             st.success(f"[{result.status}] business_date={result.business_date} "
-                       f"inserted={result.inserted_fuel_types} duplicate={result.duplicate_fuel_types}")
+                       f"inserted={result.inserted_fuel_types} updated={result.updated_fuel_types} "
+                       f"duplicate={result.duplicate_fuel_types}")
         else:
             st.error(f"[{result.status}] business_date={result.business_date} error={result.error_message}")
 
